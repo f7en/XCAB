@@ -113,6 +113,15 @@ for target in *; do
 							tar czf "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}.app.dSYM.tar.gz" "./build/Debug-iphoneos/${build_target}.app.dSYM"
 						fi
 
+						if [ ! -z "$TESTFLIGHT_API_TOKEN" -a ! -z "$TESTFLIGHT_TEAM" ] ; then
+							if [ ! -z "$TESTFLIGHT_DIST" ] ; then
+								TESTFLIGHT_NOTIFY="-F notify=True  -F distribution_lists=\"$TESTFLIGHT_DIST\""
+							else
+								TESTFLIGHT_NOTIFY="-F notify=False"
+							fi
+							curl http://testflightapp.com/api/builds.json -F file=@"/tmp/${build_target}.ipa"  -F api_token="$TESTFLIGHT_API_TOKEN" -F team_token="$TESTFLIGHT_TEAM" -F notes='New ${target} Build was uploaded via the upload API' $TESTFLIGHT_NOTIFY 
+						fi
+						
 						rm -rf /tmp/${build_target}.ipa
 						
 						if [ ! -z "$RSYNC_USER" ] ; then
