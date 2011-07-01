@@ -21,6 +21,17 @@ BOXCAR_PASSWORD="YOUR_BOXCAR_PASSWORD_GOES_HERE"
 PUBLIC_URL_ROOT="http://dl.dropbox.com/u/YOUR_DROPBOX_ID_GOES_HERE"
 
 ###############################################################################
+#You Should change both these if you want to upload to TestFlightApp
+# See http://testflightapp.com/api/doc/
+###############################################################################
+## from http://testflightapp.com/account/
+#TESTFLIGHT_API_TOKEN="Your_Testflight_API_Token"
+## from http://testflightapp.com/dashboard/team/edit/
+#TESTFLIGHT_TEAM="Your_Testflight_Team_Token"
+## Optional, for TestFlightApp notificatons
+#TESTFLIGHT_DIST="Your_Testflight_Distribution_list"
+
+###############################################################################
 #You Should change both these if you want the script to run from cron
 ###############################################################################
 
