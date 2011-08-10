@@ -99,10 +99,10 @@ for target in *; do
 						exit 3
 					fi
 					
-					betabuilder /tmp/${build_target}.ipa $OVER_AIR_INSTALLS_DIR/$target/$build_time_human "${XCAB_WEB_ROOT}/${target}/$build_time_human"
+					"/Applications/BetaBuilder for iOS Apps.app/Contents/MacOS/BetaBuilder for iOS Apps" -ipaPath="/tmp/${build_target}.ipa" -outputDirectory="$OVER_AIR_INSTALLS_DIR/$target/$build_time_human" -webserver="${XCAB_WEB_ROOT}/${target}/$build_time_human"
 					if [ $? -ne 0 ] ; then
 						rm -rf /tmp/${build_target}.ipa
-						echo "betabuilder Failed" >&2
+						echo "BetaBuilder for iOS Apps Failed" >&2
 						echo "$sha" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/sha.txt" #Don't try to build this again - it would fail over and over
 						exit 3
 					else
