@@ -43,7 +43,7 @@ fi
 build_time_human="`date +%Y%m%d%H%M%S`"
 
 now="`date '+%s'`"
-days=2 # don't build things more than 2 days old
+days=21 # don't build things more than 2 days old
 cutoff_window="`expr $days \* 24 \* 60 \* 60`" 
 cutoff_time="`expr $now - $cutoff_window`"
 
@@ -66,13 +66,22 @@ for target in *; do
 		
 		already_built="`cat $OVER_AIR_INSTALLS_DIR/$target/*/sha.txt 2>/dev/null`"
 		
-		for candidate in `git branch -l | sed -e 's/^..//'` ; do
+		for candidate in `git branch -a | sed -e 's/^..//'` ; do
 			sha="`git rev-parse $candidate`"
 			commit_time="`git log -1 --pretty=format:"%ct" $sha`"
 			if [ $commit_time -gt $cutoff_time ] ; then
 				is_built="`echo $already_built | grep $sha`"
 				if [ -z "$is_built" ] ; then
-					git checkout -f $candidate
+					if [ ! -z "`echo "$candidate" | grep '/'`" ] ; then
+						#remote branch
+						local_candidate="`echo $candidate | sed -e 's,^.*/,,'`"
+						git checkout -f $local_candidate
+						if [ $? -ne 0 ] ; then
+							git checkout -f -b $local_candidate $candidate
+						fi
+					else
+						git checkout -f $candidate
+					fi
 					git reset --hard $candidate
 					git clean -d -f -x
 					mkdir -p "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/"
@@ -160,6 +169,8 @@ for target in *; do
 					echo "$sha" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/sha.txt"
 				fi
 			fi
+			#Don't build this again if more than one branch points at same sha
+			already_built="$already_built $sha"
 		done
 		
 	fi

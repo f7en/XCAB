@@ -71,21 +71,6 @@ echo "$0 run starting at `date`" > "$START_LOG" 2>&1
 
 rm "$RUN_LOG" && touch "$RUN_LOG"
 
-#Only want to see errors
-git fetch >/dev/null 2>&1
-git pull --rebase origin master >/dev/null 2>&1
-if [ $? -ne 0 ] ; then
-	echo "Error pulling from master" >&2
-	git fetch >> "$RUN_LOG" 2>&1
-	git status >> "$RUN_LOG" 2>&1
-	git pull --rebase origin master >> "$RUN_LOG" 2>&1
-	echo "Error pulling from master" >> "$RUN_LOG"
-	cat "$START_LOG" "$RUN_LOG" | mail -s "$my_dir error and log"  "$SUCCESS_EMAIL"
-	rm -f "$LOCKFILE"
-	exit 4
-fi
-git fetch  >/dev/null 2>&1
-
 $my_dir/sync_from_Dropbox.sh >> "$RUN_LOG" 2>&1
 
 $my_dir/build_and_notify.sh >> "$RUN_LOG" 2>&1
