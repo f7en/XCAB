@@ -42,7 +42,7 @@ if [ ! -d "${XCAB_HOME}/$src_dir" ] ; then
 	git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remotes/,,' | grep -v '/HEAD$' | sort -t / -k 2 -k 1 -k 3 > "${SCM_WORKING_DIR}/${src_dir}_branches.txt"
 	git tag -l | sort > "${SCM_WORKING_DIR}/${src_dir}_tags.txt"
 	#Let the user know their branches list is up to date now
-	curl -d "notification[message]=New+${src_dir}+Project+${entry}+Directory+Added+To+Dropbox" --user "${BOXCAR_EMAIL}:${BOXCAR_PASSWORD}" https://boxcar.io/notifications
+	$my_dir/notify_with_boxcar.sh  "notification[message]=New+${src_dir}+Project+${entry}+Directory+Added+To+Dropbox"
 else
 	#Update the list of available branches so the user can find them by looking at Dropbox - 
 	# sort these so the local branches go first, and then are sorted by branch name
@@ -145,7 +145,7 @@ for entry in * ; do
 
 			wait_for_idle_dropbox
 			#Let the user know that we have filled their new directory
-			curl -d "notification[message]=New+${src_dir}+Branch+${entry}+Checked+Out+To+Dropbox" --user "${BOXCAR_EMAIL}:${BOXCAR_PASSWORD}" https://boxcar.io/notifications
+			$my_dir/notify_with_boxcar.sh "notification[message]=New+${src_dir}+Branch+${entry}+Checked+Out+To+Dropbox"
 			
 			#Record what we put into Dropbox so if the repo advances, we know the differences aren't the user updating dropbox
 			our_sha="`git rev-parse HEAD`"

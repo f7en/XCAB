@@ -8,7 +8,10 @@ if [ $? -ne 0 ] ; then
 	exit 5
 fi
 
-. $my_dir/XCAB.settings
+if [ -z "$SCM_WORKING_DIR" -o ! -d "$SCM_WORKING_DIR" ] ; then
+    #Only source the settings file if it looks like we haven't, yet
+    . $my_dir/XCAB.settings
+fi
 
 wait_for_idle_dropbox() {
 	DB_PID="`cat $HOME/.dropbox/dropbox.pid`"

@@ -154,7 +154,7 @@ for target in *; do
 							RETRY_COUNT="`expr $RETRY_COUNT + 1`"
 							if [ "$RETRY_COUNT" -gt 30 ] ; then
 								echo "Timeout waiting for web server to become ready" >&2
-								curl -d "notification[source_url]=${XCAB_WEB_ROOT}/$target/$build_time_human/index.html" -d "notification[message]=ERROR+Timeout+Waiting+For+Webserver+For+${target}+Build" --user "${BOXCAR_EMAIL}:${BOXCAR_PASSWORD}" https://boxcar.io/notifications
+								$my_dir/notify_with_boxcar.sh "notification[source_url]=${XCAB_WEB_ROOT}/$target/$build_time_human/index.html" "notification[message]=ERROR+Timeout+Waiting+For+Webserver+For+${target}+Build"
 								exit 4
 							fi
 						done
@@ -163,7 +163,7 @@ for target in *; do
 						#  going to be a bunch of new changes per run
 						#   so it won't spam the user to notify for each one
 						#Notify with Boxcar
-						curl -d "notification[source_url]=${XCAB_WEB_ROOT}/$target/$build_time_human/index.html" -d "notification[message]=New+${target}+Build+available" --user "${BOXCAR_EMAIL}:${BOXCAR_PASSWORD}" https://boxcar.io/notifications
+						$my_dir/notify_with_boxcar.sh "notification[source_url]=${XCAB_WEB_ROOT}/$target/$build_time_human/index.html" "notification[message]=New+${target}+Build+available"
 					fi
 										
 					echo "$sha" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/sha.txt"
