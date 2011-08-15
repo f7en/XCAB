@@ -44,22 +44,35 @@ if [ ! -d "${XCAB_HOME}/$src_dir" ] ; then
 	#Let the user know their branches list is up to date now
 	$my_dir/notify_with_boxcar.sh  "notification[message]=New+${src_dir}+Project+${entry}+Directory+Added+To+Dropbox"
 else
-	#Update the list of available branches so the user can find them by looking at Dropbox - 
-	# sort these so the local branches go first, and then are sorted by branch name
+	#Update the list of available tags so the user can find them by looking at Dropbox - 
 	git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remotes/,,' | grep -v '/HEAD$' | sort -t / -k 2 -k 1 -k 3 > "${SCM_WORKING_DIR}/${src_dir}_branches.txt"
 	git tag -l | sort > "${SCM_WORKING_DIR}/${src_dir}_tags.txt"
 fi
 
-if [ x"`ls -1d *xcodeproj 2>/dev/null`" != x ] ; then
-	#This is an iphone dir, give the user a list of targets they can hit
-	xcodebuild -list | awk '$1=="Targets:",$1==""' | grep -v "Targets:" | grep -v "^$" | sed -e 's/^  *//' > "${SCM_WORKING_DIR}/${src_dir}_targets.txt"
-	diff "${SCM_WORKING_DIR}/${src_dir}_targets.txt" "${XCAB_HOME}/$src_dir/targets.txt"  >/dev/null 2>&1
-	if [ $? -ne 0 ] ; then
-		cp "${SCM_WORKING_DIR}/${src_dir}_targets.txt" "${XCAB_HOME}/$src_dir/targets.txt"
-	fi
+#Generate the list of available projects so the user can find them by looking at Dropbox - 
+find . -name \*.xcodeproj -print | sort -u > "${SCM_WORKING_DIR}/${src_dir}_projects.txt"
+
+if [ -s "${SCM_WORKING_DIR}/${src_dir}_projects.txt" ] ; then
+	#Generate the list of available targets from all the projects we found so the user can find them by looking at Dropbox - 
+	rm "${SCM_WORKING_DIR}/${src_dir}_targets_unsorted.txt"
+	touch "${SCM_WORKING_DIR}/${src_dir}_targets_unsorted.txt"
+	for project_munged in `sed -e 's/ /___space___/g' ${SCM_WORKING_DIR}/${src_dir}_projects.txt`; do
+		#restore the spaces if there are any
+		project="`echo $project_munged | sed -e 's/___space___/ /g'`"
+		xcodebuild -list -project "$project"| awk '$1=="Targets:",$1==""' | grep -v "Targets:" | grep -v "^$" | sed -e 's/^  *//' >> "${SCM_WORKING_DIR}/${src_dir}_targets_unsorted.txt"
+	done
+	sort -u "${SCM_WORKING_DIR}/${src_dir}_targets_unsorted.txt" > "${SCM_WORKING_DIR}/${src_dir}_targets.txt"
 fi
 
 #Only stick it in Dropbox if it's changed.  No reason to make Dropbox upload an identical file again
+diff "${SCM_WORKING_DIR}/${src_dir}_targets.txt" "${XCAB_HOME}/$src_dir/targets.txt"  >/dev/null 2>&1
+if [ $? -ne 0 ] ; then
+	cp "${SCM_WORKING_DIR}/${src_dir}_targets.txt" "${XCAB_HOME}/$src_dir/targets.txt"
+fi
+diff "${SCM_WORKING_DIR}/${src_dir}_projects.txt" "${XCAB_HOME}/$src_dir/projects.txt"  >/dev/null 2>&1
+if [ $? -ne 0 ] ; then
+	cp "${SCM_WORKING_DIR}/${src_dir}_projects.txt" "${XCAB_HOME}/$src_dir/projects.txt"
+fi
 diff "${SCM_WORKING_DIR}/${src_dir}_branches.txt" "${XCAB_HOME}/$src_dir/branches.txt" >/dev/null 2>&1
 if [ $? -ne 0 ] ; then
 	cp "${SCM_WORKING_DIR}/${src_dir}_branches.txt" "${XCAB_HOME}/$src_dir/branches.txt"
