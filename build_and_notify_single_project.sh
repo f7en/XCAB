@@ -1,5 +1,7 @@
 #!/bin/sh
 
+days=21 # don't build things more than 21 days old
+
 my_dir="`dirname \"$0\"`"
 if [ ! -d "$my_dir" ] ; then
 	echo "Could not find directory $my_dir" >&2
@@ -9,19 +11,22 @@ fi
 . $my_dir/functions.sh
 
 usage() {
-	echo "Usage: $0 [-c xcodebuild configuration] [-m mobileprovision file] [-p xcodeproj file ] [-t build target] <Project Name>" >&2
+	echo "Usage: $0 [-c xcodebuild configuration] [ -d date as string ] [-m mobileprovision file] [-n newer than] [-p xcodeproj file ] [-t build target] <Project Name>" >&2
 	echo "	-c xcodebuild configuration: Default is 'Debug'" >&2
+	echo "	-d date as string: Default is output of 'date +%Y%m%d%H%M%S'" >&2
 	echo "	-m mobileprovision file: Default is most recent Team Provisioning Profile in $HOME/Library/MobileDevice/Provisioning Profiles" >&2
+	echo "	-n newer than: only build branches with commits newer than this. Default is unix (date +%s) style for 21 days ago" >&2
 	echo "	-p xcodeproj file: Default is <Project Name>.xcodeproj" >&2
 	echo "	-t built target: Default is first target found in the output of 'xcodebuild -list'" >&2
 	exit 3
 }
 
-while getopts "c:p:t:m:" optionName; do
+while getopts "c:d:p:t:m:" optionName; do
 	case "$optionName" in
 		c) configuration="$OPTARG"; shift; shift;;
+		d) build_time_human="$OPTARG"; shift; shift;;
 		m) provprofile="$OPTARG"; shift; shift;;
-		p) projectFile="$OPTARG"; shift; shift;;
+		n) cutoff_time="$OPTARG"; shift; shift;;
 		t) build_target="$OPTARG"; shift; shift;;
 		h) usage;;
 	esac
@@ -83,12 +88,15 @@ cd "$SCM_WORKING_DIR/$target"
 #  a connection error before we ignore it
 git fetch > /dev/null 2>&1
 
-build_time_human="`date +%Y%m%d%H%M%S`"
+if [ -z "$build_time_human" ] ; then
+  build_time_human="`date +%Y%m%d%H%M%S`"
+fi
 
 now="`date '+%s'`"
-days=21 # don't build things more than 21 days old
 cutoff_window="`expr $days \* 24 \* 60 \* 60`" 
-cutoff_time="`expr $now - $cutoff_window`"
+if [ -z "$cutoff_time" ] ; then
+  cutoff_time="`expr $now - $cutoff_window`"
+fi
 
 already_built="`cat $OVER_AIR_INSTALLS_DIR/$target/*/sha.txt 2>/dev/null`"
 
