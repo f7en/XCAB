@@ -10,14 +10,6 @@ fi
 . $my_dir/XCAB.settings
 . $my_dir/functions.sh
 
-#Find the most recent automatically generated provisioning profile
-for f in `ls -1tr "$HOME/Library/MobileDevice/Provisioning Profiles/"`; do 
-	grep -l 'Team Provisioning Profile: *' "$HOME/Library/MobileDevice/Provisioning Profiles/$f" > /dev/null 2>&1
-	if [ $? -eq 0 ]; then
-		provprofile="$HOME/Library/MobileDevice/Provisioning Profiles/$f"
-	fi
-done
-
 if [ ! -z "$CODESIGNING_KEYCHAIN" -a ! -z "$CODESIGNING_KEYCHAIN_PASSWORD" -a -f "$CODESIGNING_KEYCHAIN" ] ; then
 	security list-keychains -s $CODESIGNING_KEYCHAIN
 	security unlock-keychain -p $CODESIGNING_KEYCHAIN_PASSWORD $CODESIGNING_KEYCHAIN
