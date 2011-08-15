@@ -41,6 +41,13 @@ if [ x"`ls -1d *xcodeproj 2>/dev/null`" == x ] ; then
 	continue
 fi
 
+build_time_human="`date +%Y%m%d%H%M%S`"
+
+now="`date '+%s'`"
+days=21 # don't build things more than 21 days old
+cutoff_window="`expr $days \* 24 \* 60 \* 60`" 
+cutoff_time="`expr $now - $cutoff_window`"
+
 already_built="`cat $OVER_AIR_INSTALLS_DIR/$target/*/sha.txt 2>/dev/null`"
 
 for candidate in `git branch -a | sed -e 's/^..//'` ; do
@@ -65,14 +72,16 @@ for candidate in `git branch -a | sed -e 's/^..//'` ; do
 			#TODO need to figure out a way to indicate that the user wants to build other targets
 			build_target=`xcodebuild -list | awk '$1=="Targets:",$1==""' | grep -v "Targets:" | grep -v "^$" | sed -e 's/^  *//' | head -1`
 			#TODO need to make sure we're building for the device
-			xcodebuild build -target $build_target
+			xcodebuild build -target $build_target -configuration Debug > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_output.txt" 2> "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_error.txt"
 			if [ $? -ne 0 ] ; then
 				echo "Build Failed" >&2
 				echo "$sha" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/sha.txt" #Don't try to build this again - it would fail over and over
 				exit 3
 			fi
 			
-			if [ -d "./build/Release-iphoneos/${build_target}.app" ] ; then
+			App_location="`grep ${build_target}.app $OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_output.txt | grep '^CodeSign' | sed -e 's/^CodeSign //'`"
+			
+			if [ -d "${App_location}" ] ; then
 				xcrun -sdk iphoneos PackageApplication "./build/Release-iphoneos/${build_target}.app" -o "/tmp/${build_target}.ipa" --sign "iPhone Developer" --embed "$provprofile"
 			else
 				xcrun -sdk iphoneos PackageApplication "./build/Debug-iphoneos/${build_target}.app" -o "/tmp/${build_target}.ipa" --sign "iPhone Developer" --embed "$provprofile"
