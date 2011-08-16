@@ -23,14 +23,19 @@ usage() {
 
 while getopts "c:d:p:t:m:" optionName; do
 	case "$optionName" in
-		c) configuration="$OPTARG"; shift; shift;;
-		d) build_time_human="$OPTARG"; shift; shift;;
-		m) provprofile="$OPTARG"; shift; shift;;
-		n) cutoff_time="$OPTARG"; shift; shift;;
-		t) build_target="$OPTARG"; shift; shift;;
+		c) configuration="$OPTARG";;
+		d) build_time_human="$OPTARG";;
+		m) provprofile="$OPTARG";;
+		n) cutoff_time="$OPTARG";;
+		t) build_target="$OPTARG";;
 		h) usage;;
 	esac
 done
+echo "Arguments done: OPTIND is $OPTIND"
+if [ $OPTIND -gt 1 ]; then
+  #still arguments to parse
+  shift $(($OPTIND - 1))
+fi
 
 if [ -z "$SCM_WORKING_DIR" -o ! -d "$SCM_WORKING_DIR" ] ; then
 	echo "Undefined or incorrect SCM_WORKING_DIR variable.  Please check your XCAB.settings file or environment" >&2
@@ -44,7 +49,7 @@ fi
 
 #Need to get current project directory name and URL from the command line
 if [ $# -ne 1 ] ; then
-	echo "Could not get "
+	echo "Could not get correct number of arguments (arguments are $@)"
 	usage
 fi
 
