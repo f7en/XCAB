@@ -11,9 +11,10 @@ fi
 . $my_dir/functions.sh
 
 usage() {
-	echo "Usage: $0 [-c xcodebuild configuration] [ -d date as string ] [-m mobileprovision file] [-n newer than] [-p xcodeproj file ] [-t build target] <Project Name>" >&2
+	echo "Usage: $0 [-c xcodebuild configuration] [ -d date as string ] [ -i NOTIFY,TESTFLIGHT,RSYNC ] [-m mobileprovision file] [-n newer than] [-p xcodeproj file ] [-t build target] <Project Name>" >&2
 	echo "	-c xcodebuild configuration: Default is 'Debug'" >&2
 	echo "	-d date as string: Default is output of 'date +%Y%m%d%H%M%S'" >&2
+	echo "	-i ignore/skip post processing.  Comma separated list (no spaces) of NOTIFY,TESTFLIGHT,RSYNC" >&2
 	echo "	-m mobileprovision file: Default is most recent Team Provisioning Profile in $HOME/Library/MobileDevice/Provisioning Profiles" >&2
 	echo "	-n newer than: only build branches with commits newer than this. Default is unix (date +%s) style for 21 days ago" >&2
 	echo "	-p xcodeproj file: Default is <Project Name>.xcodeproj" >&2
@@ -26,6 +27,7 @@ while getopts "c:d:m:n:p:s:t:" optionName; do
 	case "$optionName" in
 		c) configuration="$OPTARG";;
 		d) build_time_human="$OPTARG";;
+		i) ignore_opts="$OPTARG";;
 		m) provprofile="$OPTARG";;
 		n) cutoff_time="$OPTARG";;
 		s) use_sdk="$OPTARG";;
@@ -33,6 +35,7 @@ while getopts "c:d:m:n:p:s:t:" optionName; do
 		h) usage;;
 	esac
 done
+
 echo "Arguments done: OPTIND is $OPTIND"
 if [ $OPTIND -gt 1 ]; then
   #still arguments to parse
@@ -63,6 +66,9 @@ if [ -z "$configuration" ] ; then
 fi
 if [ -z "$projectFile" ] ; then
 	projectFile="${target}.xcodeproj"
+fi
+if [ -z "$ignore_opts" ] ; then
+	ignore_opts="NONE"
 fi
 
 if [ -z "$provprofile" ] ; then
@@ -180,43 +186,50 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 					else
 						TESTFLIGHT_NOTIFY="-F notify=False"
 					fi
-					curl http://testflightapp.com/api/builds.json -F file=@"$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}.ipa"  -F api_token="$TESTFLIGHT_API_TOKEN" -F team_token="$TESTFLIGHT_TEAM" -F notes='New ${target} Build was uploaded via the upload API' $TESTFLIGHT_NOTIFY 
+					if [ -z "`echo $ignore_opts | grep -i testflight`" ] ; then
+					  curl http://testflightapp.com/api/builds.json -F file=@"$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}.ipa"  -F api_token="$TESTFLIGHT_API_TOKEN" -F team_token="$TESTFLIGHT_TEAM" -F notes='New ${target} Build was uploaded via the upload API' $TESTFLIGHT_NOTIFY 
+				  fi
 				fi
 				
 				#Clean up temp dir
 				rm -rf "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${build_target}.ipa"
 		
-				if [ ! -z "$RSYNC_USER" ] ; then
-					#If we're not using Dropbox's public web server, run rsync now
-					rsync -r ${OVER_AIR_INSTALLS_DIR} ${RSYNC_USER}@${XCAB_WEBSERVER_HOSTNAME}:${XCAB_WEBSERVER_XCAB_DIRECTORY_PATH}
-				fi
+		    if [ -z "`echo $ignore_opts | grep -i rsync`" ] ; then
+  				if [ ! -z "$RSYNC_USER" ] ; then
+  					#If we're not using Dropbox's public web server, run rsync now
+  					rsync -r ${OVER_AIR_INSTALLS_DIR} ${RSYNC_USER}@${XCAB_WEBSERVER_HOSTNAME}:${XCAB_WEBSERVER_XCAB_DIRECTORY_PATH}
+  				fi
+  			fi
 		
-				wait_for_idle_dropbox
+		    if [ -z "`echo $ignore_opts | grep -i notify`" ] ; then
+		
+  				wait_for_idle_dropbox
 			
-				#Wait to make sure the file has appeared on the server
-				IPA_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/${build_target}.ipa\" | grep HTTP/1.1 | awk '{print $2}'`"
-				PLIST_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/manifest.plist\" | grep HTTP/1.1 | awk '{print $2}'`"
-				INDEX_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/index.html\" | grep HTTP/1.1 | awk '{print $2}'`"
-				RETRY_COUNT=0
-				while [ "$IPA_STATUS" != "200"  -o "$PLIST_STATUS" != "200"  -o "$INDEX_STATUS" != "200" ] ; do
-					#Wait and try again
-					sleep 15
-					IPA_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/${build_target}.ipa\" | grep HTTP/1.1 | awk '{print $2}'`"
-					PLIST_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/manifest.plist\" | grep HTTP/1.1 | awk '{print $2}'`"
-					INDEX_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/index.html\" | grep HTTP/1.1 | awk '{print $2}'`"
-					RETRY_COUNT="`expr $RETRY_COUNT + 1`"
-					if [ "$RETRY_COUNT" -gt 30 ] ; then
-						echo "Timeout waiting for web server to become ready" >&2
-						$my_dir/notify_with_boxcar.sh "notification[source_url]=${XCAB_WEB_ROOT}/$target/$build_time_human/index.html" "notification[message]=ERROR+Timeout+Waiting+For+Webserver+For+${target}+Build"
-						exit 4
-					fi
-				done
+  				#Wait to make sure the file has appeared on the server
+  				IPA_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/${build_target}.ipa\" | grep HTTP/1.1 | awk '{print $2}'`"
+  				PLIST_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/manifest.plist\" | grep HTTP/1.1 | awk '{print $2}'`"
+  				INDEX_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/index.html\" | grep HTTP/1.1 | awk '{print $2}'`"
+  				RETRY_COUNT=0
+  				while [ "$IPA_STATUS" != "200"  -o "$PLIST_STATUS" != "200"  -o "$INDEX_STATUS" != "200" ] ; do
+  					#Wait and try again
+  					sleep 15
+  					IPA_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/${build_target}.ipa\" | grep HTTP/1.1 | awk '{print $2}'`"
+  					PLIST_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/manifest.plist\" | grep HTTP/1.1 | awk '{print $2}'`"
+  					INDEX_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/index.html\" | grep HTTP/1.1 | awk '{print $2}'`"
+  					RETRY_COUNT="`expr $RETRY_COUNT + 1`"
+  					if [ "$RETRY_COUNT" -gt 30 ] ; then
+  						echo "Timeout waiting for web server to become ready" >&2
+  						$my_dir/notify_with_boxcar.sh "notification[source_url]=${XCAB_WEB_ROOT}/$target/$build_time_human/index.html" "notification[message]=ERROR+Timeout+Waiting+For+Webserver+For+${target}+Build"
+  						exit 4
+  					fi
+  				done
 			
-				#We're making the implicit assumption here that there aren't 
-				#  going to be a bunch of new changes per run
-				#   so it won't spam the user to notify for each one
-				#Notify with Boxcar
-				$my_dir/notify_with_boxcar.sh "notification[source_url]=${XCAB_WEB_ROOT}/$target/$build_time_human/index.html" "notification[message]=New+${target}+Build+available"
+  				#We're making the implicit assumption here that there aren't 
+  				#  going to be a bunch of new changes per run
+  				#   so it won't spam the user to notify for each one
+  				#Notify with Boxcar
+  				$my_dir/notify_with_boxcar.sh "notification[source_url]=${XCAB_WEB_ROOT}/$target/$build_time_human/index.html" "notification[message]=New+${target}+Build+available"
+  		  fi
 			else
 				#Put in the permenant location
 				cp "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${build_target}.ipa" "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}.ipa"
@@ -232,7 +245,9 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 					else
 						TESTFLIGHT_NOTIFY="-F notify=False"
 					fi
-					curl http://testflightapp.com/api/builds.json -F file=@"$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}.ipa"  -F api_token="$TESTFLIGHT_API_TOKEN" -F team_token="$TESTFLIGHT_TEAM" -F notes='New ${target} Build was uploaded via the upload API' $TESTFLIGHT_NOTIFY 
+					if [ -z "`echo $ignore_opts | grep -i testflight`" ] ; then
+  				  curl http://testflightapp.com/api/builds.json -F file=@"$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}.ipa"  -F api_token="$TESTFLIGHT_API_TOKEN" -F team_token="$TESTFLIGHT_TEAM" -F notes='New ${target} Build was uploaded via the upload API' $TESTFLIGHT_NOTIFY 
+				  fi
 				else
 					echo "ipa saved to $OVER_AIR_INSTALLS_DIR/$target/$build_time_human/" >&2
 					echo "but TestFlight credentials not defined and Beta Builder not installed (or web root not configured)" >&2
