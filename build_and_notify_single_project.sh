@@ -17,16 +17,18 @@ usage() {
 	echo "	-m mobileprovision file: Default is most recent Team Provisioning Profile in $HOME/Library/MobileDevice/Provisioning Profiles" >&2
 	echo "	-n newer than: only build branches with commits newer than this. Default is unix (date +%s) style for 21 days ago" >&2
 	echo "	-p xcodeproj file: Default is <Project Name>.xcodeproj" >&2
+	echo "	-s sdk: Default the last sdk on a line that starts with iOS in the output of 'xcodebuild -showsdks''" >&2
 	echo "	-t built target: Default is first target found in the output of 'xcodebuild -list'" >&2
 	exit 3
 }
 
-while getopts "c:d:p:t:m:" optionName; do
+while getopts "c:d:m:n:p:s:t:" optionName; do
 	case "$optionName" in
 		c) configuration="$OPTARG";;
 		d) build_time_human="$OPTARG";;
 		m) provprofile="$OPTARG";;
 		n) cutoff_time="$OPTARG";;
+		s) use_sdk="$OPTARG";;
 		t) build_target="$OPTARG";;
 		h) usage;;
 	esac
@@ -103,6 +105,9 @@ if [ -z "$cutoff_time" ] ; then
   cutoff_time="`expr $now - $cutoff_window`"
 fi
 
+if [ -z "$use_sdk" ] ; then
+	use_sdk="`xcodebuild -showsdks | grep -- '-sdk' | grep -iv 'Simulator' | grep iOS | tail -1 | awk '{print $NF}'`"
+fi
 already_built="`cat $OVER_AIR_INSTALLS_DIR/$target/*/sha.txt 2>/dev/null`"
 
 for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remotes/,,' | sort -t / -k 2 -k 1 -k 3` ; do
@@ -130,7 +135,7 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 			fi
 			
 			#TODO need to make sure we're building for the device
-			xcodebuild build -target $build_target -configuration $configuration -project $projectFile > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_output.txt" 2> "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_error.txt"
+			xcodebuild build -target $build_target -configuration $configuration -project $projectFile -sdk "$use_sdk" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_output.txt" 2> "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_error.txt"
 			if [ $? -ne 0 ] ; then
 				echo "Build Failed" >&2
 				echo "$sha" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/sha.txt" #Don't try to build this again - it would fail over and over
