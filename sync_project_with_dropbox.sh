@@ -56,7 +56,7 @@ if [ -s "${SCM_WORKING_DIR}/${src_dir}_projects.txt" ] ; then
 	#Generate the list of available targets from all the projects we found so the user can find them by looking at Dropbox - 
 	rm "${SCM_WORKING_DIR}/${src_dir}_targets_unsorted.txt"
 	touch "${SCM_WORKING_DIR}/${src_dir}_targets_unsorted.txt"
-	for project_munged in `sed -e 's/ /___space___/g' ${SCM_WORKING_DIR}/${src_dir}_projects.txt`; do
+	for project_munged in `sed -e 's/ /___space___/g' "${SCM_WORKING_DIR}/${src_dir}_projects.txt"`; do
 		#restore the spaces if there are any
 		project="`echo $project_munged | sed -e 's/___space___/ /g'`"
 		xcodebuild -list -project "$project"| awk '$1=="Targets:",$1==""' | grep -v "Targets:" | grep -v "^$" | sed -e 's/^  *//' >> "${SCM_WORKING_DIR}/${src_dir}_targets_unsorted.txt"
