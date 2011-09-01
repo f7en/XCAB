@@ -141,22 +141,22 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 			fi
 			
 			#TODO need to make sure we're building for the device
-			xcodebuild build -target $build_target -configuration $configuration -project $projectFile -sdk "$use_sdk" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_output.txt" 2> "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_error.txt"
+			xcodebuild build -target $build_target -configuration $configuration -project $projectFile -sdk "$use_sdk" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_output.txt" 2> "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_error.txt"
 			if [ $? -ne 0 ] ; then
-			  cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_output.txt"
-			  cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_error.txt" >&2
+			  cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_output.txt"
+			  cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_error.txt" >&2
 				echo "Build Failed" >&2
 				echo "$sha" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/sha.txt" #Don't try to build this again - it would fail over and over
 				rm -rf "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/"
 				exit 3
 			fi
-			cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_output.txt"
-		  cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_error.txt" >&2
+			cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_output.txt"
+		  cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_error.txt" >&2
 		  
 			#Don't build this again this run if more than one branch points at same sha
 			already_built="$already_built $sha"
 			
-			App_location="`grep ${build_target}.app $OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_output.txt | grep '^CodeSign' | sed -e 's/^CodeSign //'`"
+			App_location="`grep ${build_target}.app $OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_output.txt | grep '^CodeSign' | sed -e 's/^CodeSign //'`"
 			
 			if [ -d "${App_location}" ] ; then
 				xcrun -sdk iphoneos PackageApplication "${App_location}" -o "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${build_target}.ipa" --sign "iPhone Developer" --embed "$provprofile"
