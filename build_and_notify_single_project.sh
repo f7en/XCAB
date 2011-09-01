@@ -156,14 +156,15 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 			#Don't build this again this run if more than one branch points at same sha
 			already_built="$already_built $sha"
 			
-			App_location="`grep ${build_target}.app $OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_output.txt | grep '^CodeSign' | sed -e 's/^CodeSign //'`"
+			App_location="`grep 'iphoneos.*\\.app\$' $OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_output.txt | grep '^CodeSign' | sed -e 's/^CodeSign //'`"
+			App_name="`echo \"${App_location}\" | sed -e 's,^.*/,,' -e 's/\.app$//'`"
 			
 			if [ -d "${App_location}" ] ; then
-				xcrun -sdk iphoneos PackageApplication "${App_location}" -o "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${build_target}.ipa" --sign "iPhone Developer" --embed "$provprofile"
+				xcrun -sdk iphoneos PackageApplication "${App_location}" -o "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${App_name}.ipa" --sign "iPhone Developer" --embed "$provprofile"
 			fi
 			
 			if [ $? -ne 0 ] ; then
-				rm -rf $OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${build_target}.ipa
+				rm -rf "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${App_name}.ipa"
 				echo "Package Failed" >&2
 				echo "$sha" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/sha.txt" #Don't try to build this again - it would fail over and over
 				rm -rf "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/"
@@ -171,9 +172,9 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 			fi
 						
 			if [ ! -z "${XCAB_WEB_ROOT}" -a -f "/Applications/BetaBuilder for iOS Apps.app/Contents/MacOS/BetaBuilder for iOS Apps" ] ; then
-				"/Applications/BetaBuilder for iOS Apps.app/Contents/MacOS/BetaBuilder for iOS Apps" -ipaPath="$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${build_target}.ipa" -outputDirectory="$OVER_AIR_INSTALLS_DIR/$target/$build_time_human" -webserver="${XCAB_WEB_ROOT}/${target}/$build_time_human"
+				"/Applications/BetaBuilder for iOS Apps.app/Contents/MacOS/BetaBuilder for iOS Apps" -ipaPath="$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${App_name}.ipa" -outputDirectory="$OVER_AIR_INSTALLS_DIR/$target/$build_time_human" -webserver="${XCAB_WEB_ROOT}/${target}/$build_time_human"
 				if [ $? -ne 0 ] ; then
-					rm -rf $OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${build_target}.ipa
+					rm -rf "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${App_name}.ipa"
 					echo "BetaBuilder for iOS Apps Failed" >&2
 					echo "$sha" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/sha.txt" #Don't try to build this again - it would fail over and over
 					rm -rf "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/"
@@ -182,7 +183,7 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 				
 				#Save off the symbols, too
 				if [ -d "${App_location}.dSYM" ] ; then
-					tar czf "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}.app.dSYM.tar.gz" "${App_location}.dSYM"
+					tar czf "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${App_name}.app.dSYM.tar.gz" "${App_location}.dSYM"
 				fi
 
 				if [ ! -z "$TESTFLIGHT_API_TOKEN" -a ! -z "$TESTFLIGHT_TEAM" ] ; then
@@ -192,17 +193,17 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 						TESTFLIGHT_NOTIFY="-F notify=False"
 					fi
 					if [ -z "`echo $ignore_opts | grep -i testflight`" ] ; then
-					  curl http://testflightapp.com/api/builds.json -F file=@"$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}.ipa"  -F api_token="$TESTFLIGHT_API_TOKEN" -F team_token="$TESTFLIGHT_TEAM" -F notes='New ${target} Build was uploaded via the upload API' $TESTFLIGHT_NOTIFY 
+					  curl http://testflightapp.com/api/builds.json -F file=@"$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${App_name}.ipa"  -F api_token="$TESTFLIGHT_API_TOKEN" -F team_token="$TESTFLIGHT_TEAM" -F notes='New ${target} Build was uploaded via the upload API' $TESTFLIGHT_NOTIFY 
 				  fi
 				fi
 				
 				#Clean up temp dir
-				rm -rf "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${build_target}.ipa"
+				rm -rf "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${App_name}.ipa"
 		
 		    if [ -z "`echo $ignore_opts | grep -i rsync`" ] ; then
   				if [ ! -z "$RSYNC_USER" ] ; then
   					#If we're not using Dropbox's public web server, run rsync now
-  					rsync -r ${OVER_AIR_INSTALLS_DIR} ${RSYNC_USER}@${XCAB_WEBSERVER_HOSTNAME}:${XCAB_WEBSERVER_XCAB_DIRECTORY_PATH}
+  					rsync -r "${OVER_AIR_INSTALLS_DIR} ${RSYNC_USER}@${XCAB_WEBSERVER_HOSTNAME}:${XCAB_WEBSERVER_XCAB_DIRECTORY_PATH}"
   				fi
   			fi
 		
@@ -211,14 +212,14 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
   				wait_for_idle_dropbox
 			
   				#Wait to make sure the file has appeared on the server
-  				IPA_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/${build_target}.ipa\" | grep HTTP/1.1 | awk '{print $2}'`"
+  				IPA_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/${App_name}.ipa\" | grep HTTP/1.1 | awk '{print $2}'`"
   				PLIST_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/manifest.plist\" | grep HTTP/1.1 | awk '{print $2}'`"
   				INDEX_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/index.html\" | grep HTTP/1.1 | awk '{print $2}'`"
   				RETRY_COUNT=0
   				while [ "$IPA_STATUS" != "200"  -o "$PLIST_STATUS" != "200"  -o "$INDEX_STATUS" != "200" ] ; do
   					#Wait and try again
   					sleep 15
-  					IPA_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/${build_target}.ipa\" | grep HTTP/1.1 | awk '{print $2}'`"
+  					IPA_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/${App_name}.ipa\" | grep HTTP/1.1 | awk '{print $2}'`"
   					PLIST_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/manifest.plist\" | grep HTTP/1.1 | awk '{print $2}'`"
   					INDEX_STATUS="`curl -sI -X HEAD \"${XCAB_WEB_ROOT}/${target}/$build_time_human/index.html\" | grep HTTP/1.1 | awk '{print $2}'`"
   					RETRY_COUNT="`expr $RETRY_COUNT + 1`"
@@ -237,7 +238,7 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
   		  fi
 			else
 				#Put in the permenant location
-				cp "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${build_target}.ipa" "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}.ipa"
+				cp "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${App_name}.ipa" "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${App_name}.ipa"
 				
 				#Save off the symbols, too
 				if [ -d "${App_location}.dSYM" ] ; then
@@ -251,7 +252,7 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 						TESTFLIGHT_NOTIFY="-F notify=False"
 					fi
 					if [ -z "`echo $ignore_opts | grep -i testflight`" ] ; then
-  				  curl http://testflightapp.com/api/builds.json -F file=@"$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}.ipa"  -F api_token="$TESTFLIGHT_API_TOKEN" -F team_token="$TESTFLIGHT_TEAM" -F notes='New ${target} Build was uploaded via the upload API' $TESTFLIGHT_NOTIFY 
+  				  curl http://testflightapp.com/api/builds.json -F file=@"$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${App_name}.ipa"  -F api_token="$TESTFLIGHT_API_TOKEN" -F team_token="$TESTFLIGHT_TEAM" -F notes='New ${target} Build was uploaded via the upload API' $TESTFLIGHT_NOTIFY 
 				  fi
 				else
 					echo "ipa saved to $OVER_AIR_INSTALLS_DIR/$target/$build_time_human/" >&2
