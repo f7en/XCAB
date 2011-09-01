@@ -159,6 +159,8 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 			App_location="`grep 'iphoneos.*\\.app\$' $OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_output.txt | grep '^CodeSign' | sed -e 's/^CodeSign //'`"
 			App_name="`echo \"${App_location}\" | sed -e 's,^.*/,,' -e 's/\.app$//'`"
 			
+			echo "Built App named '${App_name}' in relative location '${App_location}'"
+			
 			if [ -d "${App_location}" ] ; then
 				xcrun -sdk iphoneos PackageApplication "${App_location}" -o "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${App_name}.ipa" --sign "iPhone Developer" --embed "$provprofile"
 			fi
@@ -172,6 +174,8 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 			fi
 						
 			if [ ! -z "${XCAB_WEB_ROOT}" -a -f "/Applications/BetaBuilder for iOS Apps.app/Contents/MacOS/BetaBuilder for iOS Apps" ] ; then
+				echo "running /Applications/BetaBuilder for iOS Apps.app/Contents/MacOS/BetaBuilder for iOS Apps" -ipaPath="$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${App_name}.ipa" -outputDirectory="$OVER_AIR_INSTALLS_DIR/$target/$build_time_human" -webserver="${XCAB_WEB_ROOT}/${target}/$build_time_human"
+				
 				"/Applications/BetaBuilder for iOS Apps.app/Contents/MacOS/BetaBuilder for iOS Apps" -ipaPath="$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${App_name}.ipa" -outputDirectory="$OVER_AIR_INSTALLS_DIR/$target/$build_time_human" -webserver="${XCAB_WEB_ROOT}/${target}/$build_time_human"
 				if [ $? -ne 0 ] ; then
 					rm -rf "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${App_name}.ipa"
