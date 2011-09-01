@@ -237,7 +237,9 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
   					if [ "$RETRY_COUNT" -gt 30 ] ; then
   						echo "Timeout waiting for web server to become ready" >&2
   						$my_dir/notify_with_boxcar.sh "notification[source_url]=${XCAB_WEB_ROOT}/$target/$build_time_human/index.html" "notification[message]=ERROR+Timeout+Waiting+For+Webserver+For+${target}+Build"
-  						exit 4
+  						echo "$sha" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/sha.txt" #Don't try to build this again - it would generate timeouts over and over if the web server is down
+							rm -rf "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/"
+							exit 4
   					fi
   				done
 			
