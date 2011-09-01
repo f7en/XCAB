@@ -163,6 +163,13 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 			
 			if [ -d "${App_location}" ] ; then
 				xcrun -sdk iphoneos PackageApplication "${App_location}" -o "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${App_name}.ipa" --sign "iPhone Developer" --embed "$provprofile"
+			else
+				echo "Could not find app '${App_name}' at relative location '${App_location}' full path '`pwd`/${App_location}'"
+				rm -rf "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/${App_name}.ipa"
+				echo "Package Failed" >&2
+				echo "$sha" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/sha.txt" #Don't try to build this again - it would fail over and over
+				rm -rf "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/"
+				exit 3
 			fi
 			
 			if [ $? -ne 0 ] ; then
