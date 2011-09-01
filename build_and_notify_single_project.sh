@@ -156,7 +156,7 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 			#Don't build this again this run if more than one branch points at same sha
 			already_built="$already_built $sha"
 			
-			App_location="`grep 'iphoneos.*\\.app\$' $OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_output.txt | grep '^CodeSign' | sed -e 's/^CodeSign //'`"
+			App_location="`grep 'iphoneos.*\\.app\"$' $OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_output.txt | grep '^ */usr/bin/codesign' | sed -e 's/\"[^\"]*\$//' -e 's/^.*\"//'`"
 			App_name="`echo \"${App_location}\" | sed -e 's,^.*/,,' -e 's/\.app$//'`"
 			
 			echo "Built App named '${App_name}' in relative location '${App_location}'"
