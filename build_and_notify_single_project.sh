@@ -30,13 +30,13 @@ while getopts "c:d:m:n:p:s:t:" optionName; do
 		i) ignore_opts="$OPTARG";;
 		m) provprofile="$OPTARG";;
 		n) cutoff_time="$OPTARG";;
+		p) projectFile="$OPTARG";;
 		s) use_sdk="$OPTARG";;
 		t) build_target="$OPTARG";;
 		h) usage;;
 	esac
 done
 
-echo "Arguments done: OPTIND is $OPTIND"
 if [ $OPTIND -gt 1 ]; then
   #still arguments to parse
   shift $(($OPTIND - 1))
