@@ -141,22 +141,30 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 			fi
 			
 			#TODO need to make sure we're building for the device
-			xcodebuild build -target $build_target -configuration $configuration -project $projectFile -sdk "$use_sdk" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_output.txt" 2> "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_error.txt"
+			xcodebuild build -target $build_target -configuration $configuration -project $projectFile -sdk "$use_sdk" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_stdout.txt" 2> "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_stderr.txt"
 			if [ $? -ne 0 ] ; then
-			  cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_output.txt"
-			  cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_error.txt" >&2
+			  cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_stdout.txt"
+			  cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_stderr.txt" >&2
 				echo "Build Failed" >&2
+				echo "Extracting build error" >&2
+				grep ' error: ' "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_stdout.txt" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_build_errors.txt"
+				if [ ! -s  "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_build_errors.txt" ] ; then
+					#couldn't find any errors in output, add standard error
+					cp "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_stderr.txt" "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_build_errors.txt"
+				fi
+				ENCODED_ERROR=`perl -MURI::Escape -nle 'printf "%s%%0A", uri_escape($_)' "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_build_errors.txt"`
+				$my_dir/notify_with_boxcar.sh "notification[message]=Error+building+${target}%0A${ENCODED_ERROR}"
 				echo "$sha" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/sha.txt" #Don't try to build this again - it would fail over and over
 				rm -rf "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/"
 				exit 3
 			fi
-			cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_output.txt"
-		  cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_error.txt" >&2
+			cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_stdout.txt"
+		  cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_stderr.txt" >&2
 		  
 			#Don't build this again this run if more than one branch points at same sha
 			already_built="$already_built $sha"
 			
-			App_location="`grep 'iphoneos.*\\.app\"$' $OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_output.txt | grep '^ */usr/bin/codesign' | sed -e 's/\"[^\"]*\$//' -e 's/^.*\"//'`"
+			App_location="`grep 'iphoneos.*\\.app\"$' $OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_stdout.txt | grep '^ */usr/bin/codesign' | sed -e 's/\"[^\"]*\$//' -e 's/^.*\"//'`"
 			App_name="`echo \"${App_location}\" | sed -e 's,^.*/,,' -e 's/\.app$//'`"
 			
 			echo "Built App named '${App_name}' in relative location '${App_location}'"
