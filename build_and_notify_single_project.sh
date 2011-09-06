@@ -134,13 +134,19 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 			fi
 			git reset --hard $candidate
 			git clean -d -f -x
+			
+			if [ ! -f "$projectFile" ] ; then
+				#no project file, no sense trying to build
+				echo "Could not find project file ${projectFile} for $target on branch ${branch}, not attempting build" >&2
+				continue
+			fi
+			
 			mkdir -p "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/"
 			mkdir -p "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_time_human/"
 			if [ -z "$build_target" ] ; then
 				build_target=`xcodebuild -list -project $projectFile | awk '$1=="Targets:",$1==""' | grep -v "Targets:" | grep -v "^$" | sed -e 's/^  *//' | head -1`
 			fi
 			
-			#TODO need to make sure we're building for the device
 			xcodebuild build -target $build_target -configuration $configuration -project $projectFile -sdk "$use_sdk" > "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_stdout.txt" 2> "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_stderr.txt"
 			if [ $? -ne 0 ] ; then
 			  cat "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/${build_target}_xcodebuild_stdout.txt"
