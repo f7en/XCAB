@@ -144,9 +144,12 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 				build_identifier="$build_time_human"
 			fi
 			
-			if [ ! -f "$projectFile" ] ; then
+			if [ ! -d "$projectFile" ] ; then
 				#no project file, no sense trying to build
 				echo "Could not find project file ${projectFile} for $target on branch ${candidate}, not attempting build" >&2
+				echo "Current Directory is `pwd`" >&2
+				echo "I look around and see:" >&2
+				ls -al >&2
 				continue
 			fi
 			
@@ -179,7 +182,13 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 			#Don't build this again this run if more than one branch points at same sha
 			already_built="$already_built $sha"
 			
-			App_location="`grep 'iphoneos.*\\.app\"$' $OVER_AIR_INSTALLS_DIR/$target/$build_identifier/${build_target}_xcodebuild_stdout.txt | grep '^ */usr/bin/codesign' | sed -e 's/\"[^\"]*\$//' -e 's/^.*\"//'`"
+			Codesign_line="`grep 'iphoneos.*\\.app\"*$' $OVER_AIR_INSTALLS_DIR/$target/$build_identifier/${build_target}_xcodebuild_stdout.txt  | grep '^ */usr/bin/codesign' | sed -e 's/^.*--//' -e 's/\"[^\"]*\$//'`"
+			extract_quotes="`echo $Codesign_line | grep '\"'`"
+			if [ -z "$extract_quotes" ] ; then 
+				App_location="`echo $Codesign_line | sed -e 's/^.* //'`"
+			else
+				App_location="`echo $Codesign_line | sed -e 's/^.*\"//'`"
+			fi
 			App_name="`echo \"${App_location}\" | sed -e 's,^.*/,,' -e 's/\.app$//'`"
 			
 			echo "Built App named '${App_name}' in relative location '${App_location}'"
