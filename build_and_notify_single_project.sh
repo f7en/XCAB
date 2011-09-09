@@ -153,8 +153,17 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 				continue
 			fi
 			
+			#Make the directory for output to go in
 			mkdir -p "$OVER_AIR_INSTALLS_DIR/$target/$build_identifier/"
+			
+			#Make the directory for temp files to go in
 			mkdir -p "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_identifier/"
+			
+			#Make the directory for the script output files to go in, if we're not on the master branch
+			if [ ! -d "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/" ] ; then
+				mkdir -p "$OVER_AIR_INSTALLS_DIR/$target/$build_time_human/"
+			fi
+			
 			if [ -z "$build_target" ] ; then
 				build_target=`xcodebuild -list -project $projectFile | awk '$1=="Targets:",$1==""' | grep -v "Targets:" | grep -v "^$" | sed -e 's/^  *//' | head -1`
 			fi
