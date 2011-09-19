@@ -168,6 +168,15 @@ for candidate in `git branch -a | sed -e 's/^..//' -e 's/ ->.*$//' -e 's,^remote
 				build_target=`xcodebuild -list -project $projectFile | awk '$1=="Targets:",$1==""' | grep -v "Targets:" | grep -v "^$" | sed -e 's/^  *//' | head -1`
 			fi
 			
+			if [ -z "$build_target" ] ; then
+				echo "No Build Target Found - giving up" >&2
+				$my_dir/notify_with_boxcar.sh "notification[message]=Error+building+${target}%0ANo Target Found"
+				echo "$sha" > "$OVER_AIR_INSTALLS_DIR/$target/$build_identifier/sha.txt" #Don't try to build this again - it would fail over and over
+				rm -rf "$OVER_AIR_INSTALLS_DIR/$target/tmp/$build_identifier/"
+				exit 3
+			fi
+				
+			
 			xcodebuild build -target $build_target -configuration $configuration -project $projectFile -sdk "$use_sdk" > "$OVER_AIR_INSTALLS_DIR/$target/$build_identifier/${build_target}_xcodebuild_stdout.txt" 2> "$OVER_AIR_INSTALLS_DIR/$target/$build_identifier/${build_target}_xcodebuild_stderr.txt"
 			if [ $? -ne 0 ] ; then
 			  cat "$OVER_AIR_INSTALLS_DIR/$target/$build_identifier/${build_target}_xcodebuild_stdout.txt"
