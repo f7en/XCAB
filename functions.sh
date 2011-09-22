@@ -1,7 +1,10 @@
 
 #This file defines several functions used by XCAB. It should not need to be customized
 
-my_dir="`dirname \"$0\"`"
+if [ -z "$my_dir" ] ; then
+	my_dir="`dirname \"$0\"`" 
+fi
+
 cd "$my_dir"
 if [ $? -ne 0 ] ; then
 	echo "Could not cd to $my_dir" >&2
